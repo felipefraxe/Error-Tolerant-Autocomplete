@@ -5,6 +5,10 @@
 #include <string.h>
 #include "trie.h"
 
+#define NUM_SUGGESTIONS 10
+
+void clean_suggestions(char **suggestions, int num);
+
 int main(void)
 {
     Trie trie = trie_constructor();
@@ -22,30 +26,37 @@ int main(void)
     fclose(file);
 
     int search;
+    char **suggestions = malloc(sizeof(char *) * NUM_SUGGESTIONS);
     do
     {
         printf("Query: ");
-        scanf("%[^\n]%*c", buff);
-        char **suggestions = malloc(sizeof(char *) * 10);
-        int num_suggestions = trie_prefix_match(buff, &trie, suggestions, 10);
-        if (num_suggestions > 0)
+        for (int i = 0, c; (c = getchar()) != '\n' && i < 2047; i++)
         {
-            printf("Suggestions with prefix \"%s\":\n", buff);
-            for (int i = 0; i < num_suggestions; i++)
+            buff[i] = c;
+            buff[i + 1] = '\0';
+            int num_suggestions = trie_prefix_match(buff, &trie, suggestions, NUM_SUGGESTIONS);
+            if (num_suggestions > 0)
             {
-                printf("%s\n", suggestions[i]);
-                free(suggestions[i]);
+                printf("Suggestions with prefix \"%s\":\n", buff);
+                for (int j = 0; j < num_suggestions; j++)
+                    printf("%s\n", suggestions[j]);
+                printf("\n");
             }
-            printf("\n");
+            clean_suggestions(suggestions, num_suggestions);
         }
-        free(suggestions);
 
         printf("Search again? (y/n): ");
         search = getchar();
         while (getchar() != '\n');
     } while (search == 'y');
 
-
+    free(suggestions);
     trie_unload(&trie);
     return 0;
+}
+
+void clean_suggestions(char **suggestions, int num)
+{
+    for (int i = 0; i < num; i++)
+        free(suggestions[i]);
 }
