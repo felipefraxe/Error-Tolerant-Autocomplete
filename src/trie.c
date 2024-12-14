@@ -8,8 +8,7 @@
 
 Trie trie_constructor(void)
 {
-    Trie trie = { trie_create_node('\0') };
-    return trie;
+    return (Trie)  {.root = trie_create_node('\0')};
 }
 
 Trie_Node *trie_create_node(char ch)
@@ -68,7 +67,6 @@ int trie_prefix_match(const char *prefix, Trie *trie, char **matches, int num_ma
 {
     int num_matches = 0;
     size_t prefix_len = strlen(prefix);
-    
     Trie_Node *curr = trie->root;
     for (size_t i = 0; i < prefix_len; i++)
     {
