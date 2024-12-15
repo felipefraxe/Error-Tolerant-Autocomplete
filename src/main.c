@@ -13,14 +13,8 @@
 #define NUM_SUGGESTIONS 10
 #define QUERY_LIMIT 2048
 
-typedef struct
-{
-    uint8_t num_suggestions;
-    uint16_t *suggestions_len;
-    char **suggestions;
-} Response;
-
-void clear_response(Response *res, int num);
+void clear_suggestions(char **suggestions, int num);
+char *json_serialize(char *key, char **val, int n);
 
 int main(int argc, char *argv[])
 {
@@ -29,6 +23,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "USAGE: %s <DICT_PATH>\n", argv[0]);
         return 1;
     }
+
     Trie trie = trie_constructor();
     FILE *file = fopen(argv[1], "r");
     if (file == NULL)
@@ -63,41 +58,31 @@ int main(int argc, char *argv[])
 
     printf("Server is listening on Unix socket: %s\n", SOCKPATH);
 
-    Response res;
-    res.suggestions = malloc(sizeof(char *) * NUM_SUGGESTIONS);
+    char **suggestions = malloc(sizeof(char *) * NUM_SUGGESTIONS);
     int client_sockfd; 
     while ((client_sockfd = accept(sockfd, NULL, NULL)) != -1)
     {
         printf("Connection accepted!\n");
 
-        for (int i = 0, c = 0; c != '\n' && i < QUERY_LIMIT - 1; i++)
+        int query_len = recv(client_sockfd, &buff, sizeof(buff), 0);
+        if (query_len > 0)
         {
-            int conn_is_alive = recv(client_sockfd, &c, 1, 0);
-            if (conn_is_alive > 0 && c != '\n')
-            {
-                buff[i] = c;
-                buff[i + 1] = '\0';
+            buff[query_len] = '\0';
 
-                res.num_suggestions = trie_prefix_match(buff, &trie, res.suggestions, NUM_SUGGESTIONS);
-                send(client_sockfd, &res.num_suggestions, sizeof(res.num_suggestions), 0);
-                res.suggestions_len = malloc(sizeof(*res.suggestions_len) * res.num_suggestions);
-                if (res.num_suggestions > 0)
-                {
-                    for (int j = 0; j < res.num_suggestions; j++)
-                    {
-                        res.suggestions_len[j] = strlen(res.suggestions[j]);
-                        send(client_sockfd, &res.suggestions_len[j], sizeof(*res.suggestions_len), 0);
-                        send(client_sockfd, res.suggestions[j], res.suggestions_len[j], 0);
-                    }
-                }
-                clear_response(&res, res.num_suggestions);
-            }
+            int num_suggestions = trie_prefix_match(buff, &trie, suggestions, NUM_SUGGESTIONS);
+
+            char *res = json_serialize("suggestions", suggestions, num_suggestions);
+
+            send(client_sockfd, res, sizeof(char) * strlen(res), 0);
+
+            free(res);
+            clear_suggestions(suggestions, num_suggestions);
         }
         close(client_sockfd);
         printf("Connection closed!\n");
     }
 
-    free(res.suggestions);
+    free(suggestions);
     trie_unload(&trie);
     close(sockfd);
     unlink(SOCKPATH);
@@ -105,9 +90,30 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-void clear_response(Response *res, int num)
+void clear_suggestions(char **suggestions, int num)
 {
-    free(res->suggestions_len);
     for (int i = 0; i < num; i++)
-        free(res->suggestions[i]);
+        free(suggestions[i]);
+}
+
+char *json_serialize(char *key, char **val, int n)
+{
+    size_t total_len = strlen(key) + 8;
+    for (int i = 0; i < n; i++)
+        total_len += strlen(val[i]) + 3;
+    char *res = malloc(total_len);
+
+    if (n == 0)
+    {
+        sprintf(res, "{\"%s\":[]}", key);
+        return res;
+    }
+
+    char *ptr = res;
+    ptr += sprintf(ptr, "{\"%s\":[\"%s\"", key, val[0]);
+    for (int i = 1; i < n; i++)
+        ptr += sprintf(ptr, ",\"%s\"", val[i]);
+    ptr += sprintf(ptr, "]}");
+
+    return res;
 }
