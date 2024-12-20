@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     if (file == NULL)
     {
         fprintf(stderr, "Could not open file %s!", argv[1]);
-        return 1;
+        return 2;
     }
 
     char buff[QUERY_LIMIT];
@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
     while (fscanf(file, "%[^\n]%*c", buff) != EOF)
         trie_insert(buff, &trie);
     fclose(file);
+    trie_sort_nodes(&trie);
 
     struct sockaddr_un sockaddr = {0};
     sockaddr.sun_len = sizeof(struct sockaddr_un);
@@ -47,7 +48,7 @@ int main(int argc, char *argv[])
     if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
     {
         fprintf(stderr, "Error: Something went wrong\n");
-        return 1;
+        return 3;
     }
 
     unlink(SOCKPATH);
@@ -59,6 +60,11 @@ int main(int argc, char *argv[])
     printf("Server is listening on Unix socket: %s\n", SOCKPATH);
 
     char **suggestions = malloc(sizeof(char *) * NUM_SUGGESTIONS);
+    if (suggestions == NULL)
+    {
+        perror("Error: Could not allocate memory for suggestions\n");
+        return 1;
+    }
     int client_sockfd; 
     while ((client_sockfd = accept(sockfd, NULL, NULL)) != -1)
     {
