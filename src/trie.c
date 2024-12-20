@@ -49,6 +49,7 @@ void trie_insert(const char *str, Trie *trie)
         curr->freq++;
         curr = child;
     }
+    curr->freq++;
     curr->EOW = true;
 }
 
