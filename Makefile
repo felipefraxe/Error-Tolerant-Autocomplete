@@ -1,18 +1,21 @@
-CC = clang
-CFLAGS = -Wall -Wextra -O2 -I./include
+CC=clang++
+CFLAGS=-Wall -Wextra -O2 -std=c++23 -I./include
 
-SRC = src/main.c src/trie.c src/utils.c
-OBJ = $(SRC:.c=.o)
-BIN_DIR = bin
-EXEC = $(BIN_DIR)/autocomplete
+SRCDIR=src
+SRCS=$(wildcard $(SRCDIR)/*.cpp)
+OBJ=$(SRCS:.cpp=.o)
 
-$(EXEC): $(OBJ)
-	$(CC) $(OBJ) -o $(EXEC) $(LDFLAGS)
+BINDIR=bin
+BIN=$(BINDIR)/autocomplete
 
-%.o: %.c
+
+$(BIN): $(OBJ)
+	$(CC) $(OBJ) -o $(BIN) $(LDFLAGS)
+
+%.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(OBJ) $(EXEC)
+	rm -rf $(OBJ) $(BIN)
 
 .PHONY: clean
