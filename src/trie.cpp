@@ -1,9 +1,11 @@
 #include <queue>
+#include <stack>
 
 #include "trie.hpp"
 
 
 using std::queue;
+using std::stack;
 using std::make_shared;
 
 
@@ -78,13 +80,17 @@ vector<string> Trie::traverse(string_view str, EditVectorAutomata& eva, Bitmap& 
 
 void Trie::collect_words(TrieNode *node, string& prefix, vector<string>& words)
 {
-    if (node->is_word)
-        words.push_back(prefix);
-    
-    for (auto& [ch, child] : node->children)
+    stack<pair<TrieNode *, string>> node_stack;
+    node_stack.push({node, prefix});
+    while (!node_stack.empty())
     {
-        prefix += ch;
-        this->collect_words(child.get(), prefix, words);
-        prefix.pop_back();
+        auto [curr, prefix] = node_stack.top();
+        node_stack.pop();
+
+        if (curr->is_word)
+            words.push_back(prefix);
+        
+        for (auto& [ch, child] : curr->children)
+            node_stack.push({child.get(), prefix + ch});
     }
 }
